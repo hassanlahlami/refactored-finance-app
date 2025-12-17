@@ -6,11 +6,19 @@ pipeline {
         jdk 'JDK21'
     }
 
+    environment {
+        DOCKER_IMAGE = "hassanlahlami1/refactored-finance-app"
+        DOCKER_TAG   = "${BUILD_NUMBER}"
+        GIT_MAIN     = "main"
+        GIT_TEST     = "test"
+    }
+
     stages {
 
-        stage('Checkout') {
+        stage('Checkout (test branch)') {
             steps {
                 checkout scm
+                sh 'git branch --show-current'
             }
         }
 
@@ -55,14 +63,59 @@ pipeline {
                 }
             }
         }
+
+        stage('Merge test → main') {
+            when {
+                branch 'test'
+            }
+            steps {
+                sh """
+                git checkout ${GIT_MAIN}
+                git pull origin ${GIT_MAIN}
+                git merge ${GIT_TEST}
+                git push origin ${GIT_MAIN}
+                """
+            }
+        }
+
+        stage('Build Docker Image') {
+            when {
+                branch 'test'
+            }
+            steps {
+                sh """
+                docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+                docker tag $DOCKER_IMAGE:$DOCKER_TAG $DOCKER_IMAGE:latest
+                """
+            }
+        }
+
+        stage('Push Docker Image to Docker Hub') {
+            when {
+                branch 'test'
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'Docker-secret',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $DOCKER_IMAGE:$DOCKER_TAG
+                    docker push $DOCKER_IMAGE:latest
+                    """
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo 'Pipeline exécuté avec succès ✅'
+            echo 'Tests validés → merge main + image Docker pushée'
         }
         failure {
-            echo 'Échec du pipeline ❌'
+            echo 'Pipeline arrêté (tests / qualité non validés)'
         }
     }
 }
