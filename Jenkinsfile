@@ -66,12 +66,12 @@ pipeline {
 
         stage('Merge test → main') {
             steps {
-                bat """
-                git checkout ${GIT_MAIN}
-                git pull origin ${GIT_MAIN}
-                git merge ${GIT_TEST}
-                git push origin ${GIT_MAIN}
-                """
+                    bat """
+                    git fetch origin
+                    git checkout -B main origin/main
+                    git merge ${GIT_TEST}
+                    git push origin main
+                    """
             }
         }
 
