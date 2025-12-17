@@ -65,11 +65,6 @@ pipeline {
         }
 
         stage('Merge test → main') {
-            when {
-                expression {
-                    bat(script: 'git branch --show-current', returnStdout: true).trim() == 'test'
-                }
-            }
             steps {
                 bat """
                 git checkout ${GIT_MAIN}
@@ -81,11 +76,6 @@ pipeline {
         }
 
         stage('Build Docker Image') {
-            when {
-                expression {
-                    bat(script: 'git branch --show-current', returnStdout: true).trim() == 'test'
-                }
-            }
             steps {
                 bat """
                 docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
@@ -95,11 +85,6 @@ pipeline {
         }
 
         stage('Push Docker Image to Docker Hub') {
-            when {
-                expression {
-                    bat(script: 'git branch --show-current', returnStdout: true).trim() == 'test'
-                }
-            }
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'Docker-secret',
